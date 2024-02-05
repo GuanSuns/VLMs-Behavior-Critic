@@ -2,7 +2,7 @@
 
 Official codebase of the paper: "Task Success" is not Enough: Investigating the Use of Video-Language Models as Behavior Critics for Catching Undesirable Agent Behaviors
 
-<span style="color:orange">The dataset and code will be released soon.</span>
+**The dataset and code will be released soon.**
 
 Please refer to the paper homepage for better visualization: 
 

@@ -109,12 +109,3 @@ class CombinedDatasetLoader:
     def get_trajectory(self, dataset_name, split, episode_idx):
         data_loader = self._get_loader(dataset_name, split)
         return data_loader.get_trajectory(episode_idx)
-
-
-def main():
-    test_loader = VideoDatasetLoader(dataset_name='manual', split='train')
-    print(test_loader.dataset_meta_data['0'])
-
-
-if __name__ == '__main__':
-    main()

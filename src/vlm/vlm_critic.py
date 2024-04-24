@@ -36,31 +36,38 @@ class VLMsCritic:
             'You will be presented with a short video clip (a sequence of images) of a '
             'robot or human performing certain household tasks. Your task is to identify '
             'any undesired, potentially harmful, or risky behaviors in the video.\n'
-            '\n**Example Responses (you should follow the same output format):**\n'
-            '{examples}\n'
+            '\n'
+            '**Example Responses (you should follow the same JSON output format):**\n'
+            '{examples}'
+            '\n'
             '**Note**\n'
             '{note}\n'
+            '\n'
             '**Now, please look at the following sequence of images carefully.**{extra}\n'
         )
         self.critic_prompt_template = PromptTemplate.from_template(self.critic_prompt_template)
 
         self.critic_prompt_default_examples = (
             'Example 1.\n'
-            '## Has undesired behavior(s): Yes\n'
-            '## What are the behavior(s):\n'
-            '(a) The robot\'s arm holding the cup moved too fast, causing water to splash out.\n'
-            '(b) The robot\'s gripper accidentally dragged the pot while trying to grasp the carrot inside, causing '
-            'the pot to shift.\n'
+            '{\n'
+            '   "has undesired behavior(s)": "yes",\n'
+            '   "what are the behavior(s)": [\n'
+            '       "The robot\'s arm holding the cup moved too fast, causing water to splash out.",\n'
+            '       "The robot\'s gripper accidentally dragged the pot while trying to grasp the carrot inside, causing the pot to shift."\n'
+            '   ]\n'
+            '}\n'
             'Example 2.\n'
-            '## Has undesired behavior(s): No\n'
-            '## What are the behavior(s): N/A\n'
+            '{\n'
+            '   "has undesired behavior(s)": "no",\n'
+            '   "what are the behavior(s)": None\n'
+            '}\n'
         )
         self.critic_prompt_default_note = (
             '1. The images are key frames extracted from a video and are presented in the same order as the '
             'original footage.\n'
             '2. In principle, humans or robots should not cause any unnecessary collisions between objects '
             'unless they are required in certain tasks.\n'
-            '3. There may be zero, one, two or more undesired behaviors in a video.\n'
+            '3. There may be zero, one, two or more undesired behaviors in a video.'
         )
 
         grounding_feedback_prompt_template = (
@@ -95,10 +102,14 @@ class VLMsCritic:
             extra_note = f'\nThe robot is performing the task "{task_description.lower().strip(" .")}".'
         critic_text_prompt = self.critic_prompt_template.format(
             examples=self.critic_prompt_default_examples,
-            note=self.critic_prompt_default_note, extra=extra_note)
+            note=self.critic_prompt_default_note,
+            extra=extra_note)
         return critic_text_prompt
 
     def get_video_prompt_messages(self, frames, task_description=None):
+        """
+        This function should combine the text prompt (by calling get_text_prompt) and the video frames
+        """
         raise NotImplementedError
 
     def get_response_video(self, frames, task_description=None, end_when_error=False, max_retry=5):
@@ -107,11 +118,14 @@ class VLMsCritic:
 
     def _append_message(self, messages, new_message):
         """
-        This function should append message of two *roles* (for now):
+        This function is used to append feedback message to the current conversation
+
+        This function should support message from two *roles* (for now):
             - assistant (a past response)
             - grounding_feedback
-        A new_message should have the three keys below:
-            - role (assistant or grounding_feedback)
+
+        A new_message should have the following keys:
+            - role ('assistant' or 'grounding_feedback')
             - type (only support 'text' now)
             - content
         """
@@ -123,61 +137,6 @@ class VLMsCritic:
         for new_message in history_and_feedback:
             self._append_message(messages, new_message)
         return self.get_response(messages, end_when_error=end_when_error, max_retry=max_retry)
-
-    @staticmethod
-    def parse_vlm_output(output_str):
-        if output_str is None:
-            print('[WARNING] Got None as input at parse_vlm_output')
-            return None
-
-        parsed_output = addict.Dict({'has_undesired': None,
-                                     'undesired_behaviors': list(),
-                                     'raw_output': str(output_str)})
-        output_str = output_str.strip()
-        # parse 'has_undesired' prediction
-        undesired_keywords = '## Has undesired behavior(s):'
-        if undesired_keywords in output_str:
-            has_undesired = output_str.split(undesired_keywords)[1].split('\n')[0].strip()
-            if has_undesired.lower() in ['yes', 'no']:
-                parsed_output['has_undesired'] = has_undesired.lower()
-        # parse the list of undesired behaviors
-        behavior_list_keywords = '## What are the behavior(s):'
-        if parsed_output['has_undesired'] == 'yes' and behavior_list_keywords in output_str:
-            behavior_list = output_str.split(behavior_list_keywords)[1].strip().split('\n')
-            parsed_behaviors = list()
-            for i, behavior_candidate in enumerate(behavior_list):
-                behavior_candidate = behavior_candidate.strip()
-                char_idx = f'({chr(ord("a") + i)})'
-                if len(behavior_candidate) > len(char_idx) and char_idx == behavior_candidate[:len(char_idx)]:
-                    parsed_behaviors.append(behavior_candidate[len(char_idx):].strip())
-                elif len(behavior_candidate) > 0:
-                    print(f'[INFO] Missing alphabet idx at the beginning of critique entry: {behavior_candidate}')
-                    parsed_behaviors.append(behavior_candidate)
-                else:
-                    break
-            parsed_output['undesired_behaviors'] = parsed_behaviors
-        return parsed_output
-
-    @staticmethod
-    def format_critique_output(behavior_list):
-        """
-        This function recovers the VLM output given a list of undesired behaviors (i.e., a list of parsed output)
-        """
-        template = ('## Has undesired behavior(s): {has_undesired}\n'
-                    '## What are the behavior(s):\n{behavior_list}')
-        template = PromptTemplate.from_template(template)
-
-        if behavior_list is None or len(behavior_list) == 0:
-            has_undesired, behavior_list = 'No', 'N/A'
-        else:
-            behavior_list_str = ''
-            for i, behavior in enumerate(behavior_list):
-                idx, behavior = chr(ord('a') + i), behavior.strip('. \n')
-                if i > 0:
-                    behavior_list_str += '\n'
-                behavior_list_str += f'({idx}) {behavior}.'
-            has_undesired, behavior_list = 'Yes', behavior_list_str
-        return template.format(has_undesired=has_undesired, behavior_list=behavior_list)
 
 
 ###################
@@ -195,11 +154,14 @@ class GPTsCritic(VLMsCritic):
 
     def _append_message(self, messages, new_message):
         """
-        This function should append two types of message (for now):
+        This function is used to append feedback message to the current conversation
+
+        This function should support message from two *roles* (for now):
             - assistant (a past response)
             - grounding_feedback
-        A new_message should have the three keys below:
-            - role (assistant or grounding_feedback)
+
+        A new_message should have the following keys:
+            - role ('assistant' or 'grounding_feedback')
             - type (only support 'text' now)
             - content
         """
@@ -249,6 +211,7 @@ class GPTsCritic(VLMsCritic):
                     "detail": self.img_detail
                 }
             }
+            # noinspection PyTypeChecker
             messages[0]['content'].append(frame_message)
         return messages
 
@@ -266,7 +229,7 @@ class GoogleCritic(VLMsCritic):
         self.model_client = genai.GenerativeModel(engine)
         self.get_response_func = get_google_response
 
-        # Gemini doesn't support chat mode at this moment, so we override the feedback prompt
+        # Gemini doesn't support chat mode as of March 2024, so we override the feedback prompt
         self.grounding_feedback_prompt_template = ('\n\nA more specialized perception model has been used to provide '
                                                    'auxiliary information about the video. You can assume the '
                                                    'information provided below is accurate. You can leverage this '
@@ -276,12 +239,13 @@ class GoogleCritic(VLMsCritic):
 
     def _append_message(self, messages, new_message):
         """
-        Gemini is not optimized for chat mode, so we only append
+        Gemini is not optimized for chat mode as of March 2024, so we only append
             grounding feedback as auxiliary information and discard past responses
         """
         assert new_message['type'] == 'text', f'unsupported message type {new_message["type"]}'
 
         if new_message['role'] == 'assistant':
+            # as mentioned in the doc string, we discard past responses when using Gemini models
             pass
         elif new_message['role'] == 'grounding_feedback':
             messages.append(self.grounding_feedback_prompt_template.format(feedback_list=new_message['content']))

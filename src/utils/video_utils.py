@@ -57,6 +57,9 @@ def encode_img(img, img_format, is_rgb=True):
 
 def preprocess_traj_img(traj_img, target_shape=None, fit_black_background=None,
                         key_frames=None, keep_frame_per=None, encode_format=None, is_rgb=True):
+    """
+    The param keep_frame_per is used to down-sample a video
+    """
     if key_frames is not None:
         traj_img = [traj_img[_i] for _i in key_frames]
     elif keep_frame_per is not None:

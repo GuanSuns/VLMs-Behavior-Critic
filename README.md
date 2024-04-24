@@ -11,6 +11,8 @@ Note: The code has been refactored for better readability. If you encounter any 
 ![GPT-4V Critic Examples](assets/success_examples.png)
 
 
+All copyright by the authors.
+
 
 
 

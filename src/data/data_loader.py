@@ -15,7 +15,7 @@ DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../vi
 
 
 class VideoDatasetLoader:
-    def __init__(self, dataset_name, split,
+    def __init__(self, dataset_name='manual', split='train',
                  dataset_download_dir=DATASET_DIR):
         self.dataset_name = dataset_name
         self.split = split
@@ -57,11 +57,13 @@ class VideoDatasetLoader:
                 'undesired_behaviors': [b.strip() for b in excel_data[i]['undesired_behaviors'].strip().split('[]')
                                         if b.strip() != ''],
             })
-
         self.n_episode = len(self.dataset_meta_data)
 
     def num_episode(self):
         return self.n_episode
+
+    def episode_ids(self):
+        return list(self.dataset_meta_data.keys())
 
     def available_splits(self):
         return [self.split]
@@ -109,3 +111,7 @@ class CombinedDatasetLoader:
     def get_trajectory(self, dataset_name, split, episode_idx):
         data_loader = self._get_loader(dataset_name, split)
         return data_loader.get_trajectory(episode_idx)
+
+    def episode_ids(self, dataset_name, split):
+        data_loader = self._get_loader(dataset_name, split)
+        return data_loader.episode_ids()

@@ -13,7 +13,7 @@ def main():
         'vlm_model': 'gpt-4-vision-preview',    # 'gpt-4-vision-preview' or 'gemini-pro-vision'
         'dataset_name': 'manual',
         'dataset_split': 'train',   # only one split for now
-        'episode_samples_subset': set(list(range(3)))
+        'test_cases_subset': set(list(range(3)))
     })
 
     # load VLM model
@@ -26,21 +26,22 @@ def main():
 
     # load the dataset
     behavior_dataset = VideoDatasetLoader(dataset_name=config.dataset_name, split=config.dataset_split)
-    episode_ids = behavior_dataset.episode_ids()
+    behavior_dataset.print_basic_info()
 
     # get critiques
-    for episode_id in config.episode_samples_subset:
-        episode_id = str(episode_id)
-        if episode_id not in episode_ids:
-            print(f'[WARNING] episode with id {episode_id} is not in the dataset, skipping ...')
-            continue
+    for test_case_idx in config.test_cases_subset:
+        test_case_data = behavior_dataset.test_cases[test_case_idx]
 
-        traj_data = behavior_dataset.get_trajectory(episode_id)
-        rgb_frames, instruction = traj_data.img_obs, traj_data.instruction
+        episode_id = test_case_data['episode_id']
+        positive_samples = test_case_data['positive_examples']
+        negative_samples = test_case_data['negative_samples']
+        task_instruction = test_case_data['instruction']
+        rgb_frames = behavior_dataset.get_traj_data(episode_id).img_obs
+
         # get vlm outputs
-        vlm_output = vlm_critic.get_response_video(rgb_frames, task_description=instruction)
+        vlm_output = vlm_critic.get_response_video(rgb_frames, task_description=task_instruction)
         print('#' * 20)
-        print(f'episode: {episode_id}, VLM critique:')
+        print(f'test case: {test_case_idx}| episode: {episode_id}, VLM critique:')
         print(vlm_output)
 
 

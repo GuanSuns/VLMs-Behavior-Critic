@@ -22,13 +22,13 @@ class VideoDatasetLoader:
         self.dataset_download_dir = dataset_download_dir
         self.dataset_base_dir = os.path.join(dataset_download_dir, f'{dataset_name}/{split}')
 
-        self.dataset_meta_data = None
+        self.episode_ids = set()
+        self._test_cases = list()
         self._read_meta_data()
 
-        self.n_episode = 0
         # maintain a video data cache to speed up data reading
         self._video_data_cache = OrderedDict()
-        self._max_cache_size = 10
+        self._max_cache_size = 200
 
     def _read_meta_data(self):
         meta_data_path = os.path.join(self.dataset_download_dir, 'meta_data.xlsx')
@@ -41,77 +41,53 @@ class VideoDatasetLoader:
                                                      append_row_idx=True)
         # read meta data from the excel_data
         # noinspection PyTypeChecker
-        self.dataset_meta_data = Dict()
+        self.episode_ids, self._test_cases = set(), list()
         for i in range(len(excel_data)):
             # converting episode IDs to str can make life easier later
             episode_id = str(int(float(excel_data[i]['episode_id'])))
-            self.dataset_meta_data[episode_id] = Dict({
+
+            test_case = Dict({
                 'episode_id': episode_id,
                 'row_idx': excel_data[i]['row_idx'],
                 'dataset_name': excel_data[i]['dataset_name'],
                 'split': excel_data[i]['split'],
                 'instruction': excel_data[i]['instruction'],
                 'ground_truth_narration': excel_data[i]['ground_truth_narration'],
-                'negative_examples': [e.strip().split('#') for e in excel_data[i]['negative_examples'].split(',')],
-                'positive_examples': [e.strip().split('#') for e in excel_data[i]['positive_examples'].split(',')],
+                'negative_examples': [e.strip().split('#')[-1] for e in excel_data[i]['negative_examples'].split(',')],
+                'positive_examples': [e.strip().split('#')[-1] for e in excel_data[i]['positive_examples'].split(',')],
                 'undesired_behaviors': [b.strip() for b in excel_data[i]['undesired_behaviors'].strip().split('[]')
-                                        if b.strip() != ''],
+                                        if b.strip() != '']
             })
-        self.n_episode = len(self.dataset_meta_data)
+            self._test_cases.append(test_case)
+            self.episode_ids.update([episode_id] + test_case['negative_examples'] + test_case['positive_examples'])
 
-    def num_episode(self):
-        return self.n_episode
+    @property
+    def test_cases(self):
+        return self._test_cases
 
-    def episode_ids(self):
-        return list(self.dataset_meta_data.keys())
+    def num_test_cases(self):
+        return len(self._test_cases) if isinstance(self._test_cases, list) else -1
 
     def available_splits(self):
         return [self.split]
 
     def print_basic_info(self):
-        print(f'num of samples in the \"{self.split}\" split: {self.num_episode()} '
+        print(f'num of test cases in the \"{self.split}\" split: {self.num_test_cases()} '
               f'| available splits: {self.available_splits()}.')
 
-    def get_video_fname(self, episode_idx):
+    def get_video_fname(self, episode_id):
         return os.path.join(self.dataset_base_dir,
-                            f'{self.dataset_name}#split_{self.split}#episode_{episode_idx}#_0.mp4')
+                            f'{self.dataset_name}#split_{self.split}#episode_{episode_id}#_0.mp4')
 
-    def get_trajectory(self, episode_idx):
-        assert isinstance(episode_idx, str), 'episode idx should be given as str'
-        assert episode_idx in self.dataset_meta_data, f'episode idx {episode_idx} not in dataset_meta_data'
+    def get_traj_data(self, episode_id):
+        assert isinstance(episode_id, str), 'episode id should be given as str'
+        assert episode_id in self.episode_ids, f'episode id {episode_id} not in dataset_meta_data'
 
-        if episode_idx not in self._video_data_cache:
+        if episode_id not in self._video_data_cache:
             if len(self._video_data_cache) == self._max_cache_size:
                 self._video_data_cache.popitem(last=False)
-            frames = read_video_frames(self.get_video_fname(episode_idx))
-            self._video_data_cache[episode_idx] = frames
+            frames = read_video_frames(self.get_video_fname(episode_id))
+            self._video_data_cache[episode_id] = frames
 
-        traj_data = Dict(self.dataset_meta_data[episode_idx])
-        traj_data.img_obs = self._video_data_cache[episode_idx]
+        traj_data = Dict({'img_obs': self._video_data_cache[episode_id]})
         return traj_data
-
-
-class CombinedDatasetLoader:
-    """
-    In the current version of our benchmark, there is only one single dataset and split. But additional datasets
-        or splits might be added in the future. This class is for helping maintain multiple datasets & splits.
-    """
-    def __init__(self):
-        self.dataset_loaders = Dict()
-
-    def _get_loader(self, dataset_name, split):
-        if not key_exists(self.dataset_loaders, [dataset_name, split])[0]:
-            self.dataset_loaders[dataset_name][split] = VideoDatasetLoader(dataset_name, split)
-        return self.dataset_loaders[dataset_name][split]
-
-    def num_episode(self, dataset_name, split):
-        data_loader = self._get_loader(dataset_name, split)
-        return data_loader.num_episode()
-
-    def get_trajectory(self, dataset_name, split, episode_idx):
-        data_loader = self._get_loader(dataset_name, split)
-        return data_loader.get_trajectory(episode_idx)
-
-    def episode_ids(self, dataset_name, split):
-        data_loader = self._get_loader(dataset_name, split)
-        return data_loader.episode_ids()

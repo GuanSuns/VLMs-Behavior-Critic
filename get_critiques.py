@@ -10,7 +10,7 @@ def main():
     A minimal example showing how to obtain critiques from VLMs
     """
     config = addict.Dict({
-        'vlm_model': 'gemini-pro-vision',    # 'gpt-4-vision-preview' or 'gemini-pro-vision'
+        'vlm_model': 'gpt-4-vision-preview',    # 'gpt-4-vision-preview' or 'gemini-pro-vision'
         'dataset_name': 'manual',
         'dataset_split': 'train',   # only one split for now
         'episode_samples_subset': set(list(range(3)))

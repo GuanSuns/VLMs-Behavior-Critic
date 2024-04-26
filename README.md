@@ -4,6 +4,8 @@
 
 **Please refer to the paper homepage for better visualization**: https://guansuns.github.io/pages/vlm-critic/
 
+**The videos can be viewed at:** https://drive.google.com/drive/folders/1Fk3nJprLsLV5mkNAynwasLWN3hPZiZFK?usp=sharing
+
 Note: The code has been refactored for better readability. If you encounter any problem, feel free to email lguan9@asu.edu.
 
 ![GPT-4V Critic Examples](assets/success_examples.png)

@@ -38,10 +38,13 @@ def main():
         task_instruction = test_case_data['instruction']
         rgb_frames = behavior_dataset.get_traj_data(episode_id).img_obs
 
+        print('#' * 20)
+        print(f'test case: {test_case_idx}| episode: {episode_id}')
+        print(f'task instruction: {task_instruction}')
+
         # get vlm outputs
         vlm_output = vlm_critic.get_response_video(rgb_frames, task_description=task_instruction)
-        print('#' * 20)
-        print(f'test case: {test_case_idx}| episode: {episode_id}, VLM critique:')
+        print(f'VLM critique:')
         print(vlm_output)
 
 

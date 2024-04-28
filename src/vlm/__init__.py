@@ -1,3 +1,5 @@
+import traceback
+
 import google.generativeai as genai
 from wrapt_timeout_decorator import timeout
 import tenacity
@@ -44,6 +46,7 @@ def get_openai_response(end_when_error, max_retry,
             print(f'[INFO] Connection success - token usage: {response.usage}')
     except Exception as e:
         print(f'[ERROR] OpenAI model error: {e}')
+        print(traceback.format_exc())
         if end_when_error:
             raise e
     return vlm_output
@@ -86,6 +89,7 @@ def get_google_response(end_when_error, max_retry,
         vlm_output = response.text
     except Exception as e:
         print(f'[ERROR] Google model error: {e}')
+        print(traceback.format_exc())
         if end_when_error:
             raise e
     return vlm_output

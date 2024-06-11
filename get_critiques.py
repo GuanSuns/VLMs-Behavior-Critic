@@ -34,12 +34,13 @@ def main():
 
         episode_id = test_case_data['episode_id']
         positive_samples = test_case_data['positive_examples']
-        negative_samples = test_case_data['negative_samples']
+        negative_samples = test_case_data['negative_examples']
         task_instruction = test_case_data['instruction']
         rgb_frames = behavior_dataset.get_traj_data(episode_id).img_obs
 
         print('#' * 20)
         print(f'test case: {test_case_idx}| episode: {episode_id}')
+        print('frames shape: ', rgb_frames.shape)
         print(f'task instruction: {task_instruction}')
 
         # get vlm outputs

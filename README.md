@@ -1,6 +1,8 @@
-# "Task Success" is not Enough: Investigating the Use of Video-Language Models as Behavior Critics for Catching Undesirable Agent Behaviors
+# COLM 2024 - Task Success is not Enough: Investigating the Use of Video-Language Models as Behavior Critics for Catching Undesirable Agent Behaviors
 
-**Official codebase of the paper:** *"Task Success" is not Enough: Investigating the Use of Video-Language Models as Behavior Critics for Catching Undesirable Agent Behaviors*
+**Official codebase of the COLM 2024 paper:** *Task Success is not Enough: Investigating the Use of Video-Language Models as Behavior Critics for Catching Undesirable Agent Behaviors*
+
+**Update: The paper has been accepted to the conference of language modeling (COLM 2024)**
 
 **Please refer to the paper homepage for better visualization**: https://guansuns.github.io/pages/vlm-critic/
 
